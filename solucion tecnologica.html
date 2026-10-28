@@ -1,0 +1,931 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Semana de Décimo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* Layout: consola portátil vertical. Marcador de estado arriba, pantalla 160x144 al centro, panel de diálogo debajo. */
+/* Look único por decisión: paleta de cuatro verdes de Game Boy sobre fondo oscuro. */
+:root{
+  --g0:#0f380f; --g1:#306230; --g2:#8bac0f; --g3:#9bbc0f;
+  --bg:#101a0b; --shell:#1c2b14; --ink:#d4e6a5; --mute:#93a96d; --warn:#e0a63a;
+  --pixel:"Press Start 2P",ui-monospace,Menlo,Consolas,monospace;
+  --text:"Pixelify Sans",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{
+  color:var(--ink); font-family:var(--text); font-size:16px; line-height:1.4;
+  padding-block:16px 28px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+button{font-family:inherit;color:inherit}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{margin:0;font:400 14px/1.4 var(--pixel);letter-spacing:.04em;text-wrap:balance;color:var(--g3)}
+.chip{font:400 10px/1 var(--pixel);padding:8px 10px;border:2px solid var(--g1);color:var(--ink);letter-spacing:.06em;white-space:nowrap}
+
+.hud{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.meter{display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center;min-width:0}
+.meter .lab{font:400 9px/1.2 var(--pixel);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.meter .tag{display:none;background:var(--warn);color:var(--g0);padding:2px 4px;font-size:8px}
+.meter.hot .tag{display:inline-block}
+.meter .val{font:400 12px/1 var(--pixel);font-variant-numeric:tabular-nums;color:var(--ink);position:relative}
+.meter .bar{grid-column:1 / -1;height:12px;border:2px solid var(--g1);background:var(--g0);padding:1px}
+.meter .bar i{display:block;height:100%;width:50%;background:var(--g3);transition:width .5s steps(8)}
+.meter.hot .bar i{background:var(--warn)}
+.meter .delta{position:absolute;right:0;top:-16px;font:400 10px/1 var(--pixel);opacity:0;color:var(--g3)}
+.meter .delta.show{animation:rise 1.6s ease-out forwards}
+@keyframes rise{0%{opacity:1;transform:translateY(6px)}70%{opacity:1}100%{opacity:0;transform:translateY(-4px)}}
+
+.screenwrap{position:relative;background:var(--g0);padding:8px;border:3px solid var(--g1);border-radius:10px}
+canvas{display:block;width:100%;height:auto;aspect-ratio:160/144;image-rendering:pixelated;background:var(--g0)}
+.card{position:absolute;inset:8px;background:var(--g0);color:var(--g3);display:flex;flex-direction:column;justify-content:center;gap:14px;padding:6% 7%;overflow:auto}
+.card h2{margin:0;font:400 clamp(14px,3.4vw,20px)/1.5 var(--pixel);text-wrap:balance}
+.card p{margin:0;font-size:clamp(15px,2.6vw,18px);max-width:34em;color:var(--g2)}
+.card .go{align-self:flex-start;background:var(--g3);color:var(--g0);border:0;font:400 11px/1 var(--pixel);padding:12px 14px;cursor:pointer;letter-spacing:.06em}
+.card .go:hover{background:var(--g2)}
+
+.panel{background:var(--g3);color:var(--g0);border:4px solid var(--g0);box-shadow:0 0 0 3px var(--g1);padding:12px 14px 10px;min-height:150px;position:relative;cursor:default}
+.who{display:inline-block;background:var(--g0);color:var(--g3);font:400 10px/1 var(--pixel);padding:5px 8px;margin-bottom:8px;letter-spacing:.05em}
+.who:empty{display:none}
+.txt{margin:0;font-size:18px;line-height:1.35;min-height:3.9em;white-space:pre-line;overflow-wrap:anywhere}
+.fx{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.fx:empty{display:none}
+.fx span{font:400 9px/1 var(--pixel);padding:5px 6px;letter-spacing:.04em;border:2px solid var(--g0)}
+.fx .good{background:var(--g0);color:var(--g3)}
+.fx .bad{border-style:dashed}
+.opts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.opts:empty{display:none}
+.opt{display:block;width:100%;text-align:left;background:transparent;border:2px solid var(--g0);padding:8px 10px;font-size:17px;line-height:1.25;cursor:pointer}
+.opt.sel,.opt:hover{background:var(--g0);color:var(--g3)}
+.more{position:absolute;right:12px;bottom:8px;font:400 10px/1 var(--pixel);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+.todo{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:15px;color:var(--mute);padding:2px 2px}
+.todo b{font-weight:400;color:var(--ink)}
+.todo .ok{color:var(--g3)}
+.help{margin:0;font-size:14px;color:var(--mute)}
+kbd{font:400 9px/1 var(--pixel);border:2px solid var(--g1);padding:3px 5px;color:var(--ink)}
+
+.touch{display:none;justify-content:space-between;align-items:center;gap:16px;user-select:none;-webkit-user-select:none}
+@media (pointer:coarse){.touch{display:flex}.help{display:none}}
+.touch button{touch-action:none;background:var(--shell);border:3px solid var(--g1);color:var(--g3);font:400 14px/1 var(--pixel);cursor:pointer}
+.dpad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:4px}
+.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .r{grid-column:3;grid-row:2}.dpad .d{grid-column:2;grid-row:3}
+.abtn{width:84px;height:84px;border-radius:50%!important;font-size:20px!important}
+
+.ending{display:flex;flex-direction:column;gap:18px}
+.ending h2{margin:0;font:400 clamp(15px,3.6vw,22px)/1.45 var(--pixel);color:var(--g3);text-wrap:balance}
+.ending .lead{font-size:19px;line-height:1.4;max-width:36em;margin:0;color:var(--ink)}
+.ending h3{margin:0 0 8px;font:400 10px/1.3 var(--pixel);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.final{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.line{border-left:3px solid var(--g1);padding-left:14px;display:flex;flex-direction:column;gap:14px}
+.line .d{display:flex;flex-direction:column;gap:4px}
+.line .dn{font:400 10px/1 var(--pixel);color:var(--g3);letter-spacing:.06em}
+.line ul{margin:0;padding-left:18px;color:var(--ink)}
+.line li{margin:2px 0}
+.think{margin:0;padding-left:20px;max-width:36em}
+.think li{margin:6px 0}
+.again{align-self:flex-start;background:var(--g3);color:var(--g0);border:0;font:400 11px/1 var(--pixel);padding:14px 16px;cursor:pointer;letter-spacing:.06em}
+.again:hover{background:var(--g2)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.meter .bar i{transition:none}.more{animation:none}.meter .delta.show{animation:none;opacity:1}}
+</style>
+
+<div class="wrap" id="app">
+  <header class="top">
+    <h1>Semana de Décimo</h1>
+    <div class="chip" id="daychip">LUN · Salón</div>
+  </header>
+
+  <section class="hud" id="hud" aria-label="Estado del estudiante">
+    <div class="meter" id="m-e"><span class="lab">Estrés <span class="tag">Alto</span></span><span class="val"><em class="delta"></em><span class="n">30</span></span><div class="bar"><i></i></div></div>
+    <div class="meter" id="m-n"><span class="lab">Rendimiento</span><span class="val"><em class="delta"></em><span class="n">60</span></span><div class="bar"><i></i></div></div>
+    <div class="meter" id="m-r"><span class="lab">Relaciones</span><span class="val"><em class="delta"></em><span class="n">50</span></span><div class="bar"><i></i></div></div>
+  </section>
+
+  <div id="game" class="wrap" style="gap:12px">
+    <div class="screenwrap">
+      <canvas id="cv" width="160" height="144" aria-label="Pantalla del juego"></canvas>
+      <div class="card" id="card"></div>
+    </div>
+    <section class="panel" id="panel" aria-label="Diálogo">
+      <div class="who" id="who"></div>
+      <p class="txt" id="txt" aria-hidden="true"></p>
+      <div class="fx" id="fx"></div>
+      <div class="opts" id="opts"></div>
+      <div class="more" id="more" hidden>▼</div>
+      <div class="sr" id="sr" aria-live="polite"></div>
+    </section>
+    <div class="todo" id="todo" aria-label="Pendientes de hoy"></div>
+    <section class="touch" id="touch" aria-label="Controles táctiles">
+      <div class="dpad">
+        <button class="u" data-k="up" aria-label="Arriba" tabindex="-1">▲</button>
+        <button class="l" data-k="left" aria-label="Izquierda" tabindex="-1">◀</button>
+        <button class="r" data-k="right" aria-label="Derecha" tabindex="-1">▶</button>
+        <button class="d" data-k="down" aria-label="Abajo" tabindex="-1">▼</button>
+      </div>
+      <button class="abtn" id="abtn" aria-label="Acción" tabindex="-1">A</button>
+    </section>
+    <p class="help">Mover: <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> o <kbd>WASD</kbd> · Hablar o avanzar: <kbd>Z</kbd>, <kbd>Espacio</kbd> o <kbd>Enter</kbd> · Opciones: flechas o números</p>
+  </div>
+
+  <section class="ending" id="ending" hidden></section>
+</div>
+<script>
+/* ===== CONTENIDO: diálogos, decisiones y banco de preguntas ===== */
+const EVENTS = {
+  1: {
+    prof: S => ({
+      who: 'Profesor Rojas',
+      lines: ['Buenos días. Hoy se entrega el taller de matemáticas de la semana pasada.', '¿Cómo vas con tu taller?'],
+      opts: [
+        { l: 'Aquí está, lo terminé anoche.', fx: { n: 6, e: 2 }, say: ['Muy bien, gracias por entregarlo a tiempo.', 'Lo reviso con calma y te cuento cómo salió.'], lg: 'Entregaste el taller de matemáticas a tiempo.' },
+        { l: 'Se me olvidó. Lo entrego mañana.', fx: { n: -6, e: 8 }, flag: { late: true }, say: ['Entiendo, pero la nota baja cuando se entrega tarde.', 'Mañana lo recibo. Ya no habrá más prórrogas.'], lg: 'Dejaste el taller para después y lo entregaste tarde.' },
+        { l: 'No entendí un ejercicio. ¿Me ayuda?', fx: { n: 3, e: -4 }, flag: { askedHelp: true }, say: ['Gracias por decírmelo. Pedir ayuda a tiempo es buena idea.', 'Quédate unos minutos al final de clase y lo repasamos.'], lg: 'Pediste ayuda al profesor antes de entregar.' }
+      ]
+    }),
+    camilo: S => ({
+      who: 'Camilo',
+      lines: ['Psst... mira este video que me mandaron.', 'El profe está explicando, pero no pasa nada. ¿Lo ves conmigo?'],
+      opts: [
+        { l: 'Verlo y reírnos un rato.', fx: { r: 5, n: -5, e: 3 }, flag: { distracted: true }, say: ['Se ríen bajito, pero te pierdes la mitad de la explicación.', 'El profesor los mira de reojo.'], lg: 'Te distrajiste con Camilo durante la explicación.' },
+        { l: 'Después. Ahora escucho.', fx: { r: -2, n: 4, e: -1 }, say: ['Camilo guarda el celular, un poco molesto.', 'Tomas apuntes y entiendes mejor el tema.'], lg: 'Pediste a Camilo esperar para atender la clase.' },
+        { l: 'Mejor lo vemos en el recreo.', fx: { r: 2, n: 3 }, say: ['Camilo sonríe y queda en verlo contigo más tarde.', 'Cuidas la clase y también la amistad.'], lg: 'Quedaste con Camilo en verse en el recreo.' }
+      ]
+    }),
+    sofia: S => ({
+      who: 'Sofía',
+      lines: ['¿Me dejas copiar el taller? Se me juntaron todas las tareas.', 'Hoy tengo tres entregas y casi no he dormido.'],
+      opts: [
+        { l: 'Pasárselo para que lo copie.', fx: { r: 4, n: -3, e: 2 }, say: ['Sofía te lo agradece, pero así no aprende el tema.', 'Y los dos corren el riesgo de que el profesor se dé cuenta.'], lg: 'Dejaste que Sofía copiara tu taller.' },
+        { l: 'Explicarle cómo se resuelve.', fx: { r: 6, n: 2, e: 4 }, say: ['Pierdes parte del recreo, pero ella entiende y tú repasas.', 'Ayudar cansa un poco y se siente bien.'], lg: 'Le explicaste el taller a Sofía.' },
+        { l: 'Decirle que no y sugerirle hablar con el profe.', fx: { r: -2, n: 1 }, say: ['Sofía se molesta un poco, pero reconoce que tienes razón.', 'Quizás el profesor la ayude a organizarse.'], lg: 'Le sugeriste a Sofía hablar con el profesor.' }
+      ]
+    })
+  },
+  2: {
+    prof: S => ({
+      who: 'Profesor Rojas',
+      lines: S.flags.late
+        ? ['Recibí tu taller de matemáticas, con retraso. La nota quedó más baja.', 'Mañana es la evaluación de inglés y las entregas se están acumulando.', '¿Cómo piensas organizarte?']
+        : ['Buen trabajo con el taller de matemáticas.', 'Mañana es la evaluación de inglés. ¿Cómo piensas prepararte?'],
+      opts: [
+        { l: 'Haré un horario con estudio y descanso.', fx: { n: 5, e: -5 }, flag: { planned: true }, say: ['Un horario realista evita dejarlo todo para el último momento.', 'Incluye pausas. También cuentan.'], lg: 'Armaste un horario de estudio con pausas.' },
+        { l: 'Estudiaré todo esta noche de una vez.', fx: { n: 2, e: 8 }, flag: { crammed: true }, say: ['Estudiar todo de golpe cansa y se olvida más rápido.', 'Aun así, haz lo que puedas.'], lg: 'Decidiste estudiar todo en una sola noche.' },
+        { l: 'Estudiaré con algunos compañeros.', fx: { n: 3, r: 4, e: -2 }, say: ['Estudiar en grupo ayuda si se concentran.', 'Que no se vuelva un rato de pura charla.'], lg: 'Planeaste estudiar en grupo.' },
+        { l: 'No sé. Me siento agobiado.', fx: { e: -3 }, flag: { needsHelp: true }, say: ['Gracias por decírmelo. Pasa por orientación: la psicóloga puede ayudarte.', 'No tienes que cargar todo solo.'], lg: 'Le contaste al profesor que te sentías agobiado.' }
+      ]
+    }),
+    isabella: S => ({
+      who: 'isabella',
+      lines: ['¿Ya pensaste qué vas a estudiar? Se acerca once y las pruebas Saber.', 'Siento que todos saben qué hacer, menos yo.'],
+      opts: [
+        { l: 'Contarle que tú también estás preocupado.', fx: { r: 6, e: -4 }, say: ['isabella respira más tranquila: no es la única.', 'Quedan en investigar carreras juntos, sin presión.'], lg: 'Hablaste con isabella sobre el futuro y se acompañaron.' },
+        { l: 'Decirle que ya lo tienes todo claro.', fx: { r: -2, e: 5 }, say: ['Hablas con seguridad, pero por dentro no estás tan seguro.', 'Aparentar que todo está bien suele pesar más.'], lg: 'Fingiste tener claro tu futuro.' },
+        { l: 'Compararte con los mejores del curso.', fx: { e: 8, r: -3 }, say: ['Empiezas a medirte con todos y te sientes peor.', 'Cada quien lleva su propio ritmo.'], lg: 'Te comparaste con los demás y subió tu estrés.' }
+      ]
+    }),
+    mateo: S => ({
+      who: 'Mateo',
+      lines: ['Hoy en la tarde nos conectamos a jugar. Viene todo el grupo.', 'Es el único rato libre que tenemos esta semana.'],
+      opts: [
+        { l: 'Jugar toda la tarde.', fx: { r: 7, n: -5, e: -4 }, flag: { gamed: true }, say: ['Te diviertes y te desahogas, pero queda poco tiempo para estudiar.', 'Divertirse está bien. El truco es no dejar todo para después.'], lg: 'Pasaste la tarde jugando con tus amigos.' },
+        { l: 'Decirle que tienes que estudiar.', fx: { r: -4, n: 5, e: 3 }, say: ['Mateo se desanima un poco.', 'Estudias, pero te sientes algo aislado.'], lg: 'Renunciaste al plan de juego para estudiar.' },
+        { l: 'Jugar un rato y luego estudiar.', fx: { r: 4, n: 2, e: -1 }, say: ['Pones una alarma: una hora de juego y luego a estudiar.', 'Equilibrar descanso y deberes funciona.'], lg: 'Combinaste una hora de juego con tiempo de estudio.' }
+      ]
+    })
+  },
+  3: {
+    prof: S => ({
+      who: 'Profesor Rojas',
+      lines: S.flags.crammed
+        ? ['Hoy es la evaluación de inglés. Se nota que dormiste poco.', '¿Cómo te sientes?']
+        : ['Hoy es la evaluación de inglés. Respira hondo.', '¿Cómo te sientes?'],
+      opts: [
+        { l: 'Tranquilo. Me preparé.', fn: () => S.e <= 50
+            ? { fx: { n: 4, e: -2 }, say: ['Se nota tu calma. Eso ayuda a pensar mejor.'], lg: 'Llegaste tranquilo a la evaluación de inglés.' }
+            : { fx: { n: 1, e: 4 }, say: ['Dices estar tranquilo, pero se nota el cansancio.', 'Recuerda: puedes pedir ayuda aunque creas que no la necesitas.'], lg: 'Dijiste estar tranquilo, aunque el estrés se notaba.' } },
+        { l: 'Estoy nervioso. Me cuesta concentrarme.', fx: { e: -3, n: 2 }, say: ['Es normal. Antes de empezar, inhala 4 segundos y exhala 6.', 'Una respiración lenta baja los nervios.'], lg: 'Admitiste estar nervioso y te dieron una técnica de respiración.' },
+        { l: 'Quisiera presentarla otro día.', fx: { n: -3, e: 4 }, say: ['Esta vez no es posible.', 'Si lo hubieras hablado antes con orientación, tal vez habría otras opciones. Mejor pedir apoyo con tiempo.'], lg: 'Quisiste aplazar la evaluación, sin haber pedido apoyo antes.' }
+      ]
+    }),
+    daniela: S => S.r >= 50 ? ({
+      who: 'Daniela',
+      lines: ['Quería agradecerte por estar pendiente esta semana.', 'Hoy me siento muy presionada por la evaluación. ¿Repasamos juntos en el recreo?'],
+      opts: [
+        { l: 'Claro, repasemos 15 minutos.', fx: { r: 5, n: 3, e: -2 }, say: ['Repasan juntos y los dos se sienten más seguros.', 'Compartir la carga la hace más liviana.'], lg: 'Repasaste con Daniela antes de la evaluación.' },
+        { l: 'Hoy no puedo, repaso solo.', fx: { r: -2, n: 2, e: 1 }, say: ['Daniela asiente, aunque se nota algo decepcionada.', 'Está bien necesitar espacio. Solo avísale con tiempo.'], lg: 'Preferiste repasar solo.' }
+      ]
+    }) : ({
+      who: 'Daniela',
+      lines: ['Últimamente te siento distante. Casi no hablamos.', 'Me da pena decírtelo, pero me hace falta tu apoyo.'],
+      opts: [
+        { l: 'Pedirle disculpas y escucharla.', fx: { r: 8, e: -3 }, say: ['Se quedan hablando unos minutos y se aclara todo.', 'Hablar a tiempo evita que los conflictos crezcan.'], lg: 'Hablaste con Daniela y arreglaron la distancia.' },
+        { l: 'Decir que estás muy ocupado.', fx: { r: -5, e: 4 }, say: ['Daniela se aleja en silencio.', 'Sientes un nudo en el estómago.'], lg: 'Te excusaste con Daniela y se alejaron más.' },
+        { l: 'Proponer hablar con calma en el recreo.', fx: { r: 3, e: -1 }, say: ['Daniela acepta. Se siente escuchada.', 'Dejas la conversación para un momento mejor.'], lg: 'Quedaste en hablar con Daniela en el recreo.' }
+      ]
+    }),
+    camilo: S => ({
+      who: 'Camilo',
+      lines: ['Tengo un dolor de cabeza horrible. Entre las tareas y el examen, no doy más.', 'Creo que no he comido bien ni dormido.'],
+      opts: [
+        { l: 'Escucharlo y acompañarlo un rato.', fx: { r: 6, e: 2 }, say: ['Camilo se desahoga. Estar presente ya ayuda.', 'Escuchar también cansa un poco.'], lg: 'Acompañaste a Camilo cuando estaba agobiado.' },
+        { l: 'Sugerirle ir con la psicóloga.', fx: { r: 3, e: -2 }, say: ['Camilo duda, pero dice que lo pensará.', 'Orientación no es solo para problemas graves.'], lg: 'Le sugeriste a Camilo buscar apoyo en orientación.' },
+        { l: 'Decirle que todos están igual.', fx: { r: -5, e: 3 }, say: ['Camilo baja la mirada.', 'Minimizar lo que alguien siente no lo ayuda.'], lg: 'Le restaste importancia a lo que sentía Camilo.' }
+      ]
+    })
+  }
+};
+
+/* Conversaciones sin evento: dependen de cómo vas */
+function genericLines(id, S) {
+  const tired = S.e >= 65, calm = S.e <= 35;
+  const pools = {
+    prof: tired
+      ? ['Te veo cansado. Si lo necesitas, orientación está al lado.']
+      : ['Recuerda anotar las fechas de entrega en tu agenda.'],
+    camilo: ['Ojalá el viernes llegue pronto.'],
+    mateo: calm ? ['Hoy estás con buena energía. Así da gusto.'] : ['Qué clase tan larga. Necesito un descanso.'],
+    sofia: ['Voy a intentar dormir más esta noche.'],
+    isabella: ['Estoy buscando carreras. Es más difícil de lo que pensaba.'],
+    daniela: ['Hay que cuidar el ánimo del grupo. Entre todos se puede.'],
+  };
+  const base = pools[id] || ['...'];
+  if (tired && id !== 'prof') return ['Te ves agotado. ¿Dormiste bien?'];
+  return base;
+}
+
+/* Orientación escolar */
+function psyNode(S) {
+  if (S.psyToday) {
+    return { who: 'Psic. Elena', lines: ['Ya conversamos hoy. Recuerda practicar esta noche lo que hablamos.', 'Aquí estaré mañana también.'] };
+  }
+  const warm = S.e >= 65 ? 'Veo que traes mucha carga encima.' : 'Pasa, siéntate. Aquí puedes hablar con calma.';
+  const mark = () => { S.psyToday = true; S.psyVisits++; };
+  return {
+    who: 'Psic. Elena',
+    lines: [warm, '¿Qué es lo que más te pesa hoy?'],
+    opts: [
+      { l: 'Tengo tareas acumuladas.', fx: { e: -9 }, say: ['Escribe todo en una lista y ordénala por fecha de entrega.', 'Divide cada tarea en pasos pequeños y empieza por el primero.'], tip: 'agenda', lg: 'Hablaste con la psicóloga sobre las tareas acumuladas.' },
+      { l: 'Me presionan las notas.', fx: { e: -9 }, say: ['Una nota no define quién eres. Ponte metas realistas.', 'Estudia en bloques de 25 minutos con pausas de 5.'], tip: 'pausas', lg: 'Hablaste con la psicóloga sobre la presión de las notas.' },
+      { l: 'Me cuesta concentrarme.', fx: { e: -8 }, say: ['Prueba respirar: 4 segundos al inhalar, 6 al exhalar.', 'Y guarda el celular mientras estudias.'], tip: 'respira', lg: 'Aprendiste una técnica de respiración con la psicóloga.' },
+      { l: 'Discutí con un compañero.', fx: { e: -8, r: 2 }, say: ['Habla con calma y di cómo te sentiste, sin acusar.', 'Por ejemplo: «Me sentí mal cuando...».'], tip: 'dialogo', lg: 'Hablaste con la psicóloga sobre un conflicto con un compañero.' },
+      { l: 'Solo pasé a saludar.', fx: { e: -2 }, say: ['Siempre eres bienvenido. Esta puerta está abierta.'], lg: 'Pasaste a saludar a la psicóloga.' }
+    ],
+    mark
+  };
+}
+
+/* Noche en el cuarto */
+const TIPNIGHT = {
+  agenda: { say: ['Armas tu lista por fechas y la divides en pasos pequeños.', 'Te acuestas sabiendo por dónde empezar mañana.'], lg: 'Armaste una agenda con pasos pequeños.' },
+  pausas: { say: ['Estudias 25 minutos, descansas 5 y repites dos veces.', 'Rindes más y te duele menos la cabeza.'], lg: 'Estudiaste en bloques con pausas.' },
+  respira: { say: ['Guardas el celular y respiras: 4 segundos al inhalar, 6 al exhalar.', 'Te duermes más tranquilo.'], lg: 'Practicaste la respiración antes de dormir.' },
+  dialogo: { say: ['Escribes cómo te sentiste, sin culpar a nadie.', 'Mañana te sentirás más preparado para conversar.'], lg: 'Preparaste cómo hablar con calma con tu compañero.' }
+};
+function nightOpts(S) {
+  const o = [
+    { l: 'Estudiar una hora más.', fx: { n: 5, e: 4 }, say: ['Repasas los temas y avanzas con los pendientes.', 'Pero te acuestas más tarde.'], lg: 'Estudiaste una hora más por la noche.' },
+    { l: 'Dormir temprano.', fx: { e: -10, n: 1 }, say: ['Descansas bien. Dormir ayuda a fijar lo aprendido.'], lg: 'Te acostaste temprano.' },
+    { l: 'Organizar la agenda de mañana.', fx: { e: -5, n: 3 }, say: ['Anotas tareas y horarios. Mañana sabrás por dónde empezar.'], lg: 'Organizaste tu agenda para el día siguiente.' },
+    { l: 'Pasar la noche en el celular.', fx: { e: 5, n: -3, r: 1 }, say: ['Una cosa lleva a la otra y se hace muy tarde.', 'Amaneces cansado.'], lg: 'Pasaste la noche en el celular y dormiste poco.' }
+  ];
+  if (S.tip) {
+    const t = TIPNIGHT[S.tip];
+    o.unshift({ l: 'Practicar lo que hablé con la psicóloga.', fx: { e: -12, n: 2 }, say: t.say, lg: t.lg });
+  }
+  return o;
+}
+
+/* Banco de preguntas intercaladas: matemáticas e inglés. a = índice de la correcta */
+const QUIZ = [
+  { sub: 'Matemáticas', q: 'Si f(x) = 2x + 3, ¿cuánto vale f(4)?', o: ['11', '8', '14', '9'], a: 0 },
+  { sub: 'Inglés', q: 'Choose the correct form: She ___ to school every day.', o: ['goes', 'go', 'going', 'gone'], a: 0 },
+  { sub: 'Matemáticas', q: 'Resuelve x² − 9 = 0. ¿Cuáles son las soluciones?', o: ['x = 3 y x = −3', 'x = 9', 'x = 3 solamente', 'x = 0'], a: 0 },
+  { sub: 'Inglés', q: 'What is the past tense of "buy"?', o: ['bought', 'buyed', 'boughten', 'buying'], a: 0 },
+  { sub: 'Matemáticas', q: '¿Cuál es el 20 % de 150?', o: ['30', '20', '15', '25'], a: 0 },
+  { sub: 'Inglés', q: 'What does "deadline" mean?', o: ['fecha límite', 'línea de meta', 'dolor de cabeza', 'recreo'], a: 0 },
+  { sub: 'Matemáticas', q: 'Los catetos de un triángulo rectángulo miden 3 y 4. ¿Cuánto mide la hipotenusa?', o: ['5', '7', '6', '12'], a: 0 },
+  { sub: 'Inglés', q: 'I ___ studying when you called me.', o: ['was', 'were', 'am', 'been'], a: 0 },
+  { sub: 'Matemáticas', q: 'Simplifica: x² · x³', o: ['x⁵', 'x⁶', '2x⁵', 'x⁸'], a: 0 },
+  { sub: 'Inglés', q: 'Which sentence is correct?', o: ['He doesn\'t like math.', 'He don\'t likes math.', 'He not like math.', 'He doesn\'t likes math.'], a: 0 }
+];
+const QUIZ_SLICE = { 1: [0, 3], 2: [3, 6], 3: [6, 10] };
+
+/* Cierre según el resultado */
+function endingOf(S) {
+  if (S.e <= 40 && S.n >= 65) return {
+    t: 'Semana en equilibrio',
+    p: 'Cumpliste con tus responsabilidades, descansaste y buscaste apoyo cuando lo necesitaste. Así se siente organizar el tiempo sin descuidarte.'
+  };
+  if (S.n >= 65) return {
+    t: 'Buenas notas, mucha tensión',
+    p: 'Tus resultados fueron buenos, pero el estrés quedó alto. Rendir así toda la semana pasa factura. Descansar y pedir ayuda también son parte de estudiar.'
+  };
+  if (S.e <= 40) return {
+    t: 'Tranquilo, con pendientes',
+    p: 'Te cuidaste y mantuviste la calma, aunque las notas se resintieron. Un punto medio ayuda: organizar el tiempo sin dejar de descansar.'
+  };
+  return {
+    t: 'Una semana difícil',
+    p: 'Las responsabilidades se acumularon y el estrés se quedó contigo. No es un fracaso: es una señal para reorganizarte y pedir apoyo. La psicóloga y el profesor siguen ahí.'
+  };
+}
+const THINK = [
+  '¿Qué decisión de esta semana te ayudó más a bajar el estrés?',
+  '¿En qué momento habrías pedido ayuda antes?',
+  '¿Qué harías distinto con el tiempo, el descanso y tus amigos?'
+];
+(function(){'use strict';
+/* ===== MOTOR 1: mapas, personajes y dibujo ===== */
+const T = 16, W = 10, H = 9;
+const C = ['#0f380f', '#306230', '#8bac0f', '#9bbc0f'];
+const DAYS = ['LUN', 'MAR', 'MIÉ'], DAYFULL = ['Lunes', 'Martes', 'Miércoles'];
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+
+const ROOMS = {
+  salon: { name: 'Salón', floor: 'speck', map: [
+    'WWWWWWWWWW',
+    'WbbbbbbbbW',
+    'W........W',
+    'W.d.d.d.dW',
+    'D........W',
+    'W.d.d.d.dW',
+    'W........W',
+    'W........W',
+    'WWWWDWWWWW'] },
+  orient: { name: 'Orientación', floor: 'check', map: [
+    'WWWWWWWWWW',
+    'WkkkW..ppW',
+    'W........W',
+    'W..dd..ccW',
+    'W........D',
+    'W........W',
+    'W........W',
+    'W........W',
+    'WWWWWWWWWW'] },
+  cuarto: { name: 'Tu cuarto', floor: 'plank', map: [
+    'WWWWWWWWWW',
+    'WBB....llW',
+    'WBB......W',
+    'W........W',
+    'W...rr...W',
+    'W...rr...W',
+    'Wk......pW',
+    'W........W',
+    'WWWWEWWWWW'] }
+};
+const SOLID = 'WdbBklpcE';
+const INTERACT = { salon: 'bd', orient: 'kdcp', cuarto: 'BlEkp' };
+
+const NPCS = [
+  { id: 'prof', name: 'Profesor Rojas', room: 'salon', x: 2, y: 2, dir: 'down', L: { hair: 'short', ht: 0, shirt: 1, glasses: true } },
+  { id: 'camilo', name: 'Camilo', room: 'salon', x: 3, y: 3, dir: 'right', L: { hair: 'curly', ht: 0, shirt: 3 } },
+  { id: 'mateo', name: 'Mateo', room: 'salon', x: 7, y: 3, dir: 'left', L: { hair: 'short', ht: 1, shirt: 3, stripe: true } },
+  { id: 'sofia', name: 'Sofía', room: 'salon', x: 3, y: 5, dir: 'up', L: { hair: 'pony', ht: 0, shirt: 1, stripe: true } },
+  { id: 'isabella', name: 'isabella', room: 'salon', x: 7, y: 5, dir: 'left', L: { hair: 'long', ht: 1, shirt: 1 } },
+  { id: 'daniela', name: 'Daniela', room: 'salon', x: 1, y: 6, dir: 'right', L: { hair: 'long', ht: 0, shirt: 3, stripe: true } },
+  { id: 'psi', name: 'Psic. Elena', room: 'orient', x: 5, y: 3, dir: 'down', L: { hair: 'pony', ht: 1, shirt: 3 } }
+];
+const PLAYER_LOOK = { hair: 'cap', ht: 1, shirt: 3 };
+
+let S, mode = 'card', frame = 0, fade = 0, trans = null;
+const P = { x: 5, y: 6, tx: 5, ty: 6, prog: 0, moving: false, dir: 'up' };
+
+const tileAt = (room, x, y) => (ROOMS[room].map[y] || '')[x] || 'W';
+const same = (x, y, ch) => tileAt(S.room, x, y) === ch;
+const DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+function pending(id) {
+  if (S.done[id]) return false;
+  if (id === 'psi') return false;
+  return !!(EVENTS[S.day] && EVENTS[S.day][id]);
+}
+
+function npcAt(x, y) { return NPCS.find(n => n.room === S.room && n.x === x && n.y === y); }
+function target() {
+  const [dx, dy] = DV[P.dir]; const x = P.x + dx, y = P.y + dy;
+  const n = npcAt(x, y);
+  if (n) return { kind: 'npc', npc: n, x, y };
+  const ch = tileAt(S.room, x, y);
+  if (INTERACT[S.room].includes(ch)) return { kind: 'tile', ch, x, y };
+  return null;
+}
+
+/* ---- personas ---- */
+function person(ox, oy, L, dir, step) {
+  const o = C[0], hair = L.ht ? C[1] : C[0];
+  const shirt = C[L.shirt || 1];
+  const l1 = step === 1 ? 2 : 3, l2 = step === 2 ? 2 : 3;
+  R(ox + 5, oy + 13, 2, l1, o); R(ox + 9, oy + 13, 2, l2, o);
+  R(ox + 4, oy + 8, 8, 6, o); R(ox + 5, oy + 9, 6, 4, shirt);
+  if (L.stripe) R(ox + 5, oy + 11, 6, 1, o);
+  R(ox + 4, oy + 1, 8, 8, o); R(ox + 5, oy + 2, 6, 6, C[3]);
+  if (dir === 'up') {
+    R(ox + 5, oy + 2, 6, 6, hair);
+    if (L.hair === 'long') { R(ox + 4, oy + 2, 1, 8, hair); R(ox + 11, oy + 2, 1, 8, hair); R(ox + 5, oy + 8, 6, 1, hair); }
+    if (L.hair === 'pony') R(ox + 7, oy + 8, 2, 2, hair);
+    return;
+  }
+  switch (L.hair) {
+    case 'short': R(ox + 5, oy + 2, 6, 2, hair); break;
+    case 'curly': R(ox + 4, oy + 1, 8, 3, hair); R(ox + 4, oy + 4, 1, 2, hair); R(ox + 11, oy + 4, 1, 2, hair); break;
+    case 'cap':
+      R(ox + 4, oy + 1, 8, 3, hair);
+      if (dir === 'down') R(ox + 5, oy + 4, 6, 1, o);
+      else if (dir === 'left') R(ox + 2, oy + 4, 4, 1, o);
+      else R(ox + 10, oy + 4, 4, 1, o);
+      break;
+    case 'long': R(ox + 5, oy + 2, 6, 2, hair); R(ox + 4, oy + 2, 1, 8, hair); R(ox + 11, oy + 2, 1, 8, hair); break;
+    case 'pony':
+      R(ox + 5, oy + 2, 6, 2, hair);
+      if (dir === 'left') R(ox + 11, oy + 3, 2, 5, hair);
+      else if (dir === 'right') R(ox + 3, oy + 3, 2, 5, hair);
+      else R(ox + 11, oy + 3, 1, 6, hair);
+      break;
+  }
+  if (dir === 'down') { R(ox + 6, oy + 5, 1, 2, o); R(ox + 9, oy + 5, 1, 2, o); }
+  else if (dir === 'left') R(ox + 5, oy + 5, 1, 2, o);
+  else R(ox + 10, oy + 5, 1, 2, o);
+  if (L.glasses && dir === 'down') { R(ox + 5, oy + 5, 3, 1, o); R(ox + 8, oy + 5, 3, 1, o); }
+}
+
+function bubble(cx, cy, kind) {
+  if (kind === 'bang') {
+    R(cx - 4, cy - 13, 9, 11, C[0]); R(cx - 3, cy - 12, 7, 9, C[3]);
+    R(cx - 1, cy - 11, 2, 5, C[0]); R(cx - 1, cy - 5, 2, 2, C[0]);
+    R(cx - 1, cy - 2, 2, 2, C[0]);
+  } else {
+    R(cx - 5, cy - 9, 11, 7, C[0]); R(cx - 4, cy - 8, 9, 5, C[3]);
+    R(cx - 3, cy - 6, 1, 1, C[0]); R(cx, cy - 6, 1, 1, C[0]); R(cx + 3, cy - 6, 1, 1, C[0]);
+    R(cx - 1, cy - 2, 2, 1, C[0]);
+  }
+}
+
+/* ---- bloques con contorno que se fusionan con vecinos iguales ---- */
+function blob(x, y, ch, fill) {
+  const px = x * T, py = y * T;
+  const l = same(x - 1, y, ch), r = same(x + 1, y, ch), u = same(x, y - 1, ch), d = same(x, y + 1, ch);
+  R(px, py, T, T, C[0]);
+  R(px + (l ? 0 : 1), py + (u ? 0 : 1), T - (l ? 0 : 1) - (r ? 0 : 1), T - (u ? 0 : 1) - (d ? 0 : 1), fill);
+}
+
+function floorTile(x, y, kind) {
+  const px = x * T, py = y * T;
+  R(px, py, T, T, C[2]);
+  if (kind === 'speck') { R(px + 3, py + 4, 2, 1, C[3]); R(px + 11, py + 11, 2, 1, C[3]); }
+  else if (kind === 'check') { if ((x + y) % 2 === 0) R(px, py, T, T, C[3]); }
+  else { R(px, py + 7, T, 1, C[1]); R(px, py + 15, T, 1, C[1]); R(px + ((x % 2) ? 5 : 11), py, 1, 7, C[1]); R(px + ((x % 2) ? 11 : 4), py + 8, 1, 7, C[1]); }
+}
+
+function drawTile(x, y, ch) {
+  const px = x * T, py = y * T, room = S.room, rm = ROOMS[room];
+  if (ch === 'W') {
+    R(px, py, T, T, C[1]); R(px, py, T, 1, C[0]); R(px, py + 8, T, 1, C[0]);
+    R(px + 8, py, 1, 8, C[0]); R(px + 3, py + 9, 1, 7, C[0]); R(px + 12, py + 9, 1, 7, C[0]);
+    return;
+  }
+  floorTile(x, y, rm.floor);
+  switch (ch) {
+    case 'D': R(px + (x === 0 ? 0 : 1), py + 1, 14, 14, C[0]); R(px + 3, py + 3, 10, 10, C[1]); R(px + 10, py + 8, 2, 2, C[3]); break;
+    case 'E': R(px + 1, py + 0, 14, 15, C[0]); R(px + 3, py + 2, 10, 13, C[1]); R(px + 10, py + 8, 2, 2, C[3]); break;
+    case 'b': R(px, py, T, T, C[1]); blob(x, y, 'b', C[1]); R(px + 3, py + 4, 3 + (x % 3) * 2, 1, C[3]); R(px + 8, py + 9, 4, 1, C[3]); break;
+    case 'd':
+      if (room === 'salon') {
+        const hair = (x + y) % 2 ? C[1] : C[0];
+        if ((x + y) % 5 !== 1) { R(px + 4, py, 8, 8, C[0]); R(px + 5, py + 1, 6, 6, hair); }
+        R(px + 1, py + 7, 14, 8, C[0]); R(px + 2, py + 8, 12, 5, C[1]); R(px + 2, py + 8, 12, 1, C[2]);
+      } else { blob(x, y, 'd', C[1]); R(px + 3, py + 4, 5, 4, C[3]); R(px + 11, py + 3, 3, 3, C[3]); }
+      break;
+    case 'B': {
+      const head = !same(x, y - 1, 'B');
+      blob(x, y, 'B', head ? C[3] : C[1]);
+      if (head) R(px + 3, py + 4, 10, 6, C[2]);
+      else R(px + 2, py + 5, 12, 1, C[2]);
+      break; }
+    case 'l': {
+      blob(x, y, 'l', C[1]);
+      if (!same(x - 1, y, 'l')) { R(px + 6, py + 2, 9, 7, C[0]); R(px + 7, py + 3, 7, 5, C[3]); R(px + 6, py + 10, 9, 2, C[2]); }
+      break; }
+    case 'k': {
+      blob(x, y, 'k', C[1]);
+      const cols = [C[3], C[2], C[3], C[2]];
+      for (let i = 0; i < 4; i++) { R(px + 2 + i * 3, py + 3, 2, 5, cols[(i + x) % 4]); R(px + 2 + i * 3, py + 10, 2, 4, cols[(i + x + 1) % 4]); }
+      R(px + 1, py + 8, 14, 1, C[0]);
+      break; }
+    case 'c': blob(x, y, 'c', C[1]); R(px + 1, py + 8, 14, 1, C[0]); R(px + 2, py + 3, 12, 2, C[2]); break;
+    case 'p':
+      R(px + 5, py + 10, 6, 5, C[0]); R(px + 6, py + 11, 4, 3, C[1]);
+      R(px + 3, py + 3, 10, 8, C[0]); R(px + 4, py + 4, 8, 6, C[1]); R(px + 6, py + 5, 2, 2, C[2]); R(px + 9, py + 7, 2, 2, C[2]);
+      break;
+  }
+}
+
+function drawWallDecor() {
+  if (S.room === 'salon') { /* reloj */
+    R(8 * T + 3, 3, 10, 10, C[0]); R(8 * T + 4, 4, 8, 8, C[3]); R(8 * T + 8, 5, 1, 4, C[0]); R(8 * T + 8, 8, 3, 1, C[0]);
+  } else if (S.room === 'orient') { /* cartel con corazón */
+    const px = 5 * T + 2, py = 2;
+    R(px, py, 12, 12, C[0]); R(px + 1, py + 1, 10, 10, C[1]);
+    const hx = px + 2, hy = py + 3;
+    R(hx + 1, hy, 2, 1, C[3]); R(hx + 5, hy, 2, 1, C[3]); R(hx, hy + 1, 8, 2, C[3]); R(hx + 1, hy + 3, 6, 1, C[3]); R(hx + 2, hy + 4, 4, 1, C[3]); R(hx + 3, hy + 5, 2, 1, C[3]);
+  } else { /* ventana */
+    const px = 6 * T + 1, py = 2;
+    R(px, py, 14, 12, C[0]); R(px + 2, py + 2, 10, 8, C[3]); R(px + 6, py + 2, 2, 8, C[0]); R(px + 2, py + 5, 10, 1, C[0]);
+  }
+}
+
+function drawRug() {
+  if (S.room !== 'cuarto') return;
+  R(4 * T + 1, 4 * T + 1, 30, 30, C[1]); R(4 * T + 3, 4 * T + 3, 26, 26, C[2]); R(4 * T + 6, 4 * T + 6, 20, 20, C[1]);
+}
+
+function draw() {
+  if (!S) return;
+  const rm = ROOMS[S.room];
+  R(0, 0, 160, 144, C[0]);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ch = tileAt(S.room, x, y);
+    if (ch === 'r') { floorTile(x, y, rm.floor); continue; }
+    drawTile(x, y, ch);
+  }
+  drawRug();
+  drawWallDecor();
+  /* actores ordenados por fila */
+  const actors = NPCS.filter(n => n.room === S.room).map(n => ({ y: n.y * T, f: () => person(n.x * T, n.y * T, n.L, n.dir, 0) }));
+  const ox = P.x * T + (P.moving ? (P.tx - P.x) * P.prog : 0), oy = P.y * T + (P.moving ? (P.ty - P.y) * P.prog : 0);
+  const step = P.moving ? 1 + (Math.floor(P.prog / 4) % 2) : 0;
+  actors.push({ y: oy + 1, f: () => person(ox, oy, PLAYER_LOOK, P.dir, step) });
+  actors.sort((a, b) => a.y - b.y).forEach(a => a.f());
+  /* marcadores de pendientes */
+  const blink = Math.floor(frame / 24) % 2 === 0;
+  NPCS.filter(n => n.room === S.room && pending(n.id)).forEach(n => bubble(n.x * T + 8, n.y * T + (blink ? 0 : 1), 'bang'));
+  if (S.room === 'salon' && !S.done.quiz) bubble(80, 18 + (blink ? 0 : 1), 'bang');
+  /* pista de interacción */
+  if (mode === 'play' && !P.moving) {
+    const t = target();
+    if (t) {
+      const isPending = t.kind === 'npc' ? pending(t.npc.id) : (S.room === 'salon' && t.ch === 'b' && !S.done.quiz);
+      if (!isPending) bubble(t.x * T + 8, t.y * T + (t.kind === 'npc' ? 0 : 3), 'dots');
+    }
+  }
+  if (fade > 0) { ctx.globalAlpha = Math.min(1, fade); R(0, 0, 160, 144, C[0]); ctx.globalAlpha = 1; }
+}
+/* ===== MOTOR 2: estado, diálogos, flujo del juego y entrada ===== */
+const clamp = v => Math.max(0, Math.min(100, v));
+const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const NAMES = { e: 'Estrés', n: 'Rendimiento', r: 'Relaciones' };
+const HINT = {
+  salon: 'Salón de décimo. Los ! marcan a quien tiene algo que decirte y el pizarrón trae ejercicios. La puerta de la izquierda lleva a orientación; la de abajo, a casa.',
+  orient: 'Orientación escolar. La psicóloga está junto al escritorio. La puerta de la derecha vuelve al salón.',
+  cuarto: 'Tu cuarto. La cama cierra el día y el escritorio guarda tu agenda.'
+};
+let D = null, cardGo = null;
+
+function newGame() {
+  S = { day: 1, e: 30, n: 60, r: 50, room: 'salon', flags: {}, done: {}, log: [], tip: null, psyToday: false, psyVisits: 0, quizOk: 0, quizTotal: 0 };
+  Object.assign(P, { x: 5, y: 6, tx: 5, ty: 6, prog: 0, moving: false, dir: 'up' });
+}
+
+/* ---------- marcador y pendientes ---------- */
+function setMeter(id, v, inv) {
+  const m = $(id);
+  m.querySelector('.n').textContent = v;
+  m.querySelector('i').style.width = v + '%';
+  if (inv) m.classList.toggle('hot', v > 70);
+}
+function hud() {
+  setMeter('m-e', S.e, true); setMeter('m-n', S.n); setMeter('m-r', S.r);
+  $('daychip').textContent = DAYS[S.day - 1] + ' · ' + ROOMS[S.room].name;
+  const peers = Object.keys(EVENTS[S.day]).filter(k => k !== 'prof');
+  const pd = peers.filter(k => S.done[k]).length;
+  const items = [
+    ['Hablar con el profesor', !!S.done.prof],
+    ['Resolver el pizarrón', !!S.done.quiz],
+    ['Compañeros ' + pd + '/' + peers.length, pd === peers.length],
+    ['Orientación (opcional)', S.psyToday]
+  ];
+  $('todo').innerHTML = items.map(([t, ok]) => '<span class="' + (ok ? 'ok' : '') + '"><b>' + (ok ? '✓' : '○') + '</b> ' + t + '</span>').join('');
+}
+function applyFx(fx) {
+  if (!fx) return;
+  ['e', 'n', 'r'].forEach(k => {
+    if (!fx[k]) return;
+    S[k] = clamp(S[k] + fx[k]);
+    const d = document.querySelector('#m-' + k + ' .delta');
+    d.textContent = (fx[k] > 0 ? '+' : '−') + Math.abs(fx[k]);
+    d.classList.remove('show'); void d.offsetWidth; d.classList.add('show');
+  });
+  hud();
+}
+
+/* ---------- diálogos ---------- */
+function setIdle() {
+  $('who').textContent = ''; $('txt').textContent = HINT[S.room]; $('fx').innerHTML = ''; $('opts').innerHTML = ''; $('more').hidden = true;
+  $('sr').textContent = '';
+}
+function talk(node) {
+  mode = 'dialog';
+  D = { node, i: 0, phase: 'lines', sel: 0, shown: 0, text: '', res: null, after2: null };
+  $('fx').innerHTML = ''; $('opts').innerHTML = '';
+  showLine();
+}
+function showLine() {
+  const n = D.node;
+  D.text = D.phase === 'result' ? D.res.say[D.i] : n.lines[D.i];
+  D.shown = 0;
+  $('who').textContent = n.who || '';
+  $('txt').textContent = '';
+  $('sr').textContent = D.text;
+}
+function renderOpts() {
+  const box = $('opts'); box.innerHTML = '';
+  D.node.opts.forEach((o, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt' + (i === D.sel ? ' sel' : ''); b.tabIndex = -1; b.textContent = (i + 1) + '. ' + o.l;
+    b.addEventListener('click', ev => { ev.stopPropagation(); choose(i); });
+    b.addEventListener('pointerenter', () => { D.sel = i; markSel(); });
+    box.appendChild(b);
+  });
+  $('more').hidden = true;
+}
+function markSel() { [...$('opts').children].forEach((b, i) => b.classList.toggle('sel', i === D.sel)); }
+function choose(i) {
+  if (!D || D.phase !== 'choice') return;
+  const o = D.node.opts[i];
+  const r = typeof o.fn === 'function' ? o.fn() : o;
+  if (r.flag) Object.assign(S.flags, r.flag);
+  if (r.tip) S.tip = r.tip;
+  const lg = r.lg || o.lg; if (lg) S.log.push({ day: S.day, t: lg });
+  applyFx(r.fx);
+  D.after2 = r.after || o.after || null;
+  D.res = { say: r.say || [] };
+  $('opts').innerHTML = '';
+  const chips = ['e', 'n', 'r'].filter(k => r.fx && r.fx[k]).map(k => {
+    const d = r.fx[k], good = k === 'e' ? d < 0 : d > 0;
+    return '<span class="' + (good ? 'good' : 'bad') + '">' + (d > 0 ? '▲' : '▼') + ' ' + NAMES[k] + ' ' + (d > 0 ? '+' : '−') + Math.abs(d) + '</span>';
+  });
+  $('fx').innerHTML = chips.join('');
+  D.phase = 'result'; D.i = 0;
+  if (!D.res.say.length) { finish(); return; }
+  showLine();
+}
+function advance() {
+  if (!D) return;
+  if (D.shown < D.text.length && D.phase !== 'choice') { D.shown = D.text.length; $('txt').textContent = D.text; return; }
+  if (D.phase === 'lines') {
+    if (D.i < D.node.lines.length - 1) { D.i++; showLine(); return; }
+    if (D.node.opts && D.node.opts.length) { D.phase = 'choice'; D.sel = 0; renderOpts(); return; }
+    finish(); return;
+  }
+  if (D.phase === 'choice') { choose(D.sel); return; }
+  if (D.phase === 'result') {
+    if (D.i < D.res.say.length - 1) { D.i++; showLine(); return; }
+    finish();
+  }
+}
+function finish() {
+  const nd = D.node, a2 = D.after2;
+  D = null; mode = 'play';
+  $('fx').innerHTML = ''; $('opts').innerHTML = '';
+  setIdle(); hud();
+  if (a2) a2();
+  if (nd.after) nd.after();
+}
+
+/* ---------- tarjetas (inicio de día y portada) ---------- */
+function showCard(h, ps, btn, go) {
+  const c = $('card');
+  c.innerHTML = '<h2>' + h + '</h2>' + ps.map(p => '<p>' + p + '</p>').join('') + '<button class="go" tabindex="-1">' + btn + ' ▶</button>';
+  c.hidden = false; mode = 'card';
+  cardGo = () => { c.hidden = true; cardGo = null; mode = 'play'; setIdle(); if (go) go(); };
+  c.querySelector('.go').addEventListener('click', ev => { ev.stopPropagation(); if (cardGo) cardGo(); });
+}
+function intro() {
+  showCard('Semana de Décimo', [
+    'Eres estudiante de grado décimo y falta poco para empezar once.',
+    'Durante tres días tomarás decisiones en clase, con tus amigos y en casa. Cada una cambia tu estrés, tu rendimiento y tus relaciones.',
+    'Los ! marcan a quien tiene algo que decirte.'
+  ], 'Comenzar');
+}
+function dayCard() {
+  const wake = S.e >= 65 ? 'Amaneces agotado. El estrés te acompañó hasta la cama.' : S.e <= 30 ? 'Amaneces con energía.' : 'Amaneces algo cansado, pero listo para otro día.';
+  const goal = S.day === 2 ? 'Mañana es la evaluación de inglés.' : 'Hoy es la evaluación de inglés y el último día de la semana.';
+  showCard(DAYFULL[S.day - 1].toUpperCase(), [wake, goal], 'Ir al salón');
+}
+
+/* ---------- transiciones ---------- */
+function fadeTo(cb) { mode = 'trans'; trans = { cb, phase: 'out' }; }
+function enterRoom(room, x, y, dir) {
+  S.room = room; Object.assign(P, { x, y, tx: x, ty: y, prog: 0, moving: false, dir });
+  hud(); setIdle();
+}
+
+/* ---------- acciones ---------- */
+function action() {
+  if (mode === 'card') { if (cardGo) cardGo(); return; }
+  if (mode === 'dialog') { advance(); return; }
+  if (mode !== 'play' || P.moving) return;
+  const t = target(); if (!t) return;
+  if (t.kind === 'npc') interactNpc(t.npc); else interactTile(t);
+}
+function interactNpc(n) {
+  const opp = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  n.dir = opp[P.dir];
+  if (n.id === 'psi') {
+    const nd = psyNode(S);
+    if (nd.mark) nd.after = () => { nd.mark(); hud(); };
+    talk(nd); return;
+  }
+  const ev = EVENTS[S.day][n.id];
+  if (ev && !S.done[n.id]) {
+    const nd = ev(S); const orig = nd.after;
+    nd.after = () => { S.done[n.id] = true; hud(); if (orig) orig(); };
+    talk(nd);
+  } else {
+    talk({ who: n.name, lines: genericLines(n.id, S) });
+  }
+}
+function interactTile(t) {
+  const r = S.room, ch = t.ch;
+  if (r === 'salon' && ch === 'b') return runQuiz();
+  if (r === 'salon' && ch === 'd') {
+    const f = ['El cuaderno de un compañero está lleno de apuntes.', 'Un pupitre con un trabajo a medias.', 'Alguien escribe sin levantar la cabeza.', 'Alguien cabecea de sueño sobre el pupitre.'];
+    return talk({ who: '', lines: [f[(t.x + t.y) % f.length]] });
+  }
+  if (r === 'cuarto' && ch === 'B') return night();
+  if (r === 'cuarto' && ch === 'l') return deskInfo();
+  if (r === 'cuarto' && ch === 'E') return talk({ who: '', lines: ['Ya es de noche. Mejor cierra el día en la cama.'] });
+  if (r === 'cuarto' && ch === 'k') return talk({ who: '', lines: ['Tus libros y cuadernos de décimo.'] });
+  if (r === 'orient' && ch === 'k') return talk({ who: '', lines: ['Folletos: «Cómo organizar tu tiempo» y «Respirar para calmar los nervios».'] });
+  if (r === 'orient' && ch === 'd') return talk({ who: '', lines: ['El escritorio de la psicóloga: una taza de té y un cuaderno.'] });
+  if (r === 'orient' && ch === 'c') return talk({ who: '', lines: ['Un sofá cómodo. Aquí uno se siente escuchado.'] });
+  if (ch === 'p') return talk({ who: '', lines: ['Una planta bien cuidada.'] });
+}
+function deskInfo() {
+  const notes = { 1: 'Evaluación de inglés el miércoles. Tareas de matemáticas por ordenar.', 2: 'Evaluación de inglés: ¡mañana!', 3: 'Último día de la semana.' };
+  talk({ who: 'Agenda', lines: ['Tu escritorio. En la agenda dice:', notes[S.day], S.tip ? 'Recuerda practicar esta noche lo que hablaste con Elena.' : null].filter(Boolean) });
+}
+function runQuiz() {
+  if (S.done.quiz) { talk({ who: 'Pizarrón', lines: ['Ya resolviste los ejercicios de hoy.'] }); return; }
+  const [a, b] = QUIZ_SLICE[S.day], qs = QUIZ.slice(a, b);
+  let i = 0, ok = 0;
+  const ask = () => {
+    if (i >= qs.length) return endQuiz(ok, qs.length);
+    const q = qs[i];
+    const opts = shuffle(q.o.map((t, k) => ({ t, k }))).map(({ t, k }) => ({
+      l: t,
+      fn: () => {
+        if (k === q.a) {
+          ok++;
+          const base = S.day === 3 ? 5 : 3, tired = S.e > 70, gain = tired ? Math.ceil(base / 2) : base;
+          return { fx: { n: gain }, say: tired ? ['¡Correcto!', 'Con tanto estrés te cuesta concentrarte: sumas menos puntos de los que podrías.'] : ['¡Correcto!'] };
+        }
+        return { fx: { n: -1, e: 2 }, say: ['No era esa opción.', 'La respuesta correcta era: ' + q.o[q.a] + '.'] };
+      }
+    }));
+    talk({ who: 'Pizarrón ' + (i + 1) + '/' + qs.length + ' · ' + q.sub, lines: [q.q], opts, after: () => { i++; ask(); } });
+  };
+  talk({ who: 'Pizarrón', lines: ['El pizarrón trae ejercicios de matemáticas e inglés.', S.day === 3 ? 'Hoy cuentan para la evaluación.' : 'Respóndelos con calma.'], after: ask });
+}
+function endQuiz(ok, total) {
+  S.quizOk += ok; S.quizTotal += total; S.done.quiz = true;
+  S.log.push({ day: S.day, t: 'Acertaste ' + ok + ' de ' + total + ' ejercicios del pizarrón.' });
+  hud();
+  talk({ who: 'Pizarrón', lines: ['Acertaste ' + ok + ' de ' + total + '.', ok === total ? '¡Excelente trabajo!' : ok * 2 >= total ? 'Vas bien. Repasa lo que fallaste.' : 'Hoy fue difícil. Pedir ayuda a tiempo cambia mucho.'] });
+}
+function homeDoor() {
+  const miss = [];
+  if (!S.done.prof) miss.push('hablar con el profesor');
+  if (!S.done.quiz) miss.push('resolver el pizarrón');
+  const stay = () => { P.y = 7; P.ty = 7; P.dir = 'up'; };
+  const go = () => fadeTo(() => { enterRoom('cuarto', 4, 7, 'up'); });
+  if (miss.length) {
+    talk({ who: '', lines: ['Aún te falta: ' + miss.join(' y ') + '.', 'Si te vas ahora, los pendientes se acumulan.'], opts: [
+      { l: 'Quedarme y terminarlos', say: [], after: stay },
+      { l: 'Irme a casa de todos modos', fn: () => ({ fx: { n: -4 * miss.length, e: 4 * miss.length }, say: ['Los pendientes se quedan dando vueltas en tu cabeza.', 'Mañana habrá más por hacer.'], lg: 'Te fuiste a casa con tareas pendientes.', after: go }) }
+    ] });
+  } else {
+    talk({ who: '', lines: ['¿Terminar la jornada y volver a casa?'], opts: [
+      { l: 'Sí, volver a casa', say: [], after: go },
+      { l: 'Todavía no', say: [], after: stay }
+    ] });
+  }
+}
+function night() {
+  talk({ who: '', lines: [S.e >= 65 ? 'Llegas a tu cuarto con la cabeza llena de cosas.' : 'Llegas a tu cuarto. Es hora de cerrar el día.', '¿Cómo lo cierras?'], opts: nightOpts(S), after: endDay });
+}
+function endDay() {
+  S.tip = null; S.psyToday = false;
+  fadeTo(() => {
+    if (S.day >= 3) { showEnding(); return; }
+    S.day++; S.done = {}; S.room = 'salon';
+    enterRoom('salon', 5, 6, 'up');
+    dayCard();
+  });
+}
+function showEnding() {
+  const en = endingOf(S), byDay = { 1: [], 2: [], 3: [] };
+  S.log.forEach(x => byDay[x.day].push(x.t));
+  mode = 'end';
+  $('game').hidden = true; $('ending').hidden = false;
+  const days = [1, 2, 3].map(d => '<div class="d"><span class="dn">' + DAYFULL[d - 1].toUpperCase() + '</span><ul>' + byDay[d].map(t => '<li>' + t + '</li>').join('') + '</ul></div>').join('');
+  $('ending').innerHTML =
+    '<h2>' + en.t + '</h2><p class="lead">' + en.p + '</p>' +
+    '<p class="lead">Respondiste bien ' + S.quizOk + ' de ' + S.quizTotal + ' ejercicios y buscaste apoyo en orientación ' + S.psyVisits + (S.psyVisits === 1 ? ' vez.' : ' veces.') + '</p>' +
+    '<div><h3>Tus decisiones</h3><div class="line">' + days + '</div></div>' +
+    '<div><h3>Para pensar</h3><ol class="think">' + THINK.map(t => '<li>' + t + '</li>').join('') + '</ol></div>' +
+    '<button class="again" id="again" tabindex="-1">Jugar otra vez</button>';
+  $('again').addEventListener('click', () => { newGame(); $('ending').hidden = true; $('game').hidden = false; hud(); setIdle(); intro(); });
+  window.scrollTo(0, 0);
+}
+
+/* ---------- movimiento y bucle ---------- */
+const keys = { up: false, down: false, left: false, right: false };
+let lastKey = null;
+function blocked(x, y) {
+  if (x < 0 || y < 0 || x >= W || y >= H) return true;
+  if (SOLID.includes(tileAt(S.room, x, y))) return true;
+  return !!npcAt(x, y);
+}
+function pickMove() {
+  let k = lastKey && keys[lastKey] ? lastKey : ['up', 'down', 'left', 'right'].find(d => keys[d]);
+  if (!k) return;
+  P.dir = k;
+  const [dx, dy] = DV[k], nx = P.x + dx, ny = P.y + dy;
+  if (blocked(nx, ny)) return;
+  P.tx = nx; P.ty = ny; P.prog = 0; P.moving = true;
+}
+function arrive() {
+  if (tileAt(S.room, P.x, P.y) !== 'D') return;
+  if (S.room === 'salon' && P.x === 0) { fadeTo(() => enterRoom('orient', 8, 4, 'left')); return; }
+  if (S.room === 'orient') { fadeTo(() => enterRoom('salon', 1, 4, 'right')); return; }
+  if (S.room === 'salon' && P.y === 8) homeDoor();
+}
+function update() {
+  frame++;
+  if (D && D.phase !== 'choice') {
+    if (D.shown < D.text.length) { D.shown = Math.min(D.text.length, D.shown + 1.4); $('txt').textContent = D.text.slice(0, Math.floor(D.shown)); }
+    $('more').hidden = D.shown < D.text.length;
+  }
+  if (trans) {
+    if (trans.phase === 'out') { fade += 0.1; if (fade >= 1) { fade = 1; trans.cb(); trans.phase = 'in'; } }
+    else { fade -= 0.1; if (fade <= 0) { fade = 0; trans = null; if (mode === 'trans') mode = 'play'; } }
+  }
+  if (mode === 'play' && !P.moving) pickMove();
+  if (P.moving) {
+    P.prog += 2;
+    if (P.prog >= 16) { P.x = P.tx; P.y = P.ty; P.moving = false; P.prog = 0; if (mode === 'play') arrive(); }
+  }
+}
+let last = 0, acc = 0;
+function loop(t) {
+  acc += Math.min(100, t - last); last = t;
+  while (acc >= 16.67) { update(); acc -= 16.67; }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- entrada ---------- */
+const KM = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', W: 'up', s: 'down', S: 'down', a: 'left', A: 'left', d: 'right', D: 'right' };
+addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = KM[e.key];
+  if (k) {
+    e.preventDefault(); keys[k] = true; lastKey = k;
+    if (mode === 'dialog' && D && D.phase === 'choice' && !e.repeat) {
+      const n = D.node.opts.length;
+      if (k === 'up') { D.sel = (D.sel + n - 1) % n; markSel(); }
+      if (k === 'down') { D.sel = (D.sel + 1) % n; markSel(); }
+    }
+    return;
+  }
+  if (e.key === ' ' || e.key === 'Enter' || e.key === 'z' || e.key === 'Z') { e.preventDefault(); if (!e.repeat) action(); return; }
+  if (/^[1-5]$/.test(e.key) && mode === 'dialog' && D && D.phase === 'choice') {
+    const i = +e.key - 1; if (i < D.node.opts.length) choose(i);
+  }
+});
+addEventListener('keyup', e => { const k = KM[e.key]; if (k) keys[k] = false; });
+addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); });
+document.querySelectorAll('.dpad button').forEach(b => {
+  const k = b.dataset.k;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); keys[k] = true; lastKey = k; });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { keys[k] = false; }));
+});
+$('abtn').addEventListener('pointerdown', e => { e.preventDefault(); action(); });
+$('panel').addEventListener('click', () => { if (mode === 'dialog' && D && D.phase !== 'choice') advance(); });
+
+/* ---------- arranque ---------- */
+newGame(); hud(); setIdle(); intro();
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>
